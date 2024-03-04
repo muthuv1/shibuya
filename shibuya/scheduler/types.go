@@ -20,6 +20,7 @@ type EngineScheduler interface {
 	GetDeployedCollections() (map[int64]time.Time, error)
 	GetAllNodesInfo() (smodel.AllNodesInfo, error)
 	GetPodsMetrics(collectionID, planID int64) (map[string]apiv1.ResourceList, error)
+	GetPodLimit(collectionID, planID int64) (map[string]apiv1.ResourceList, error)
 	PodReadyCount(collectionID int64) int
 	DownloadPodLog(collectionID, planID int64) (string, error)
 	GetCollectionEnginesDetail(projectID, collectionID int64) (*smodel.CollectionDetails, error)

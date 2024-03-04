@@ -938,6 +938,21 @@ func (kcm *K8sClientManager) GetPodsMetrics(collectionID, planID int64) (map[str
 	return result, nil
 }
 
+func (kcm *K8sClientManager) GetPodLimit(collectionID, planID int64) (map[string]apiv1.ResourceList, error) {
+	pods, err := kcm.GetPodsByCollectionPlan(collectionID, planID)
+	if err != nil {
+		return nil, err
+	}
+	limits := make(map[string]apiv1.ResourceList, len(pods))
+	for _, pod := range pods {
+		for _, c := range pod.Spec.Containers {
+			//shibuya has one container per pod
+			limits[getEngineNumber(pod.GetName())] = c.Resources.Limits
+		}
+	}
+	return limits, nil
+}
+
 func (kcm *K8sClientManager) GetCollectionEnginesDetail(projectID, collectionID int64) (*smodel.CollectionDetails, error) {
 	labelSelector := fmt.Sprintf("collection=%d", collectionID)
 	pods, err := kcm.GetPods(labelSelector, "")
