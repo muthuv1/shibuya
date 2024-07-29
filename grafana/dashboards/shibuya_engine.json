@@ -75,8 +75,8 @@
           "refId": "A"
         },
         {
-          "expr": "shibuya_cpu_limit / 1000",
-          "format": "heatmap",
+          "expr": "shibuya_cpu_limit{collection_id=\"$collectionID\"} / 1000",
+          "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "CPU Threshold engine-{{engine_no}}",
@@ -189,7 +189,7 @@
           "refId": "A"
         },
         {
-          "expr": "shibuya_mem_limit",
+          "expr": "shibuya_mem_limit{collection_id=\"$collectionID\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "MEM Threshold engine-{{engine_no}}",
