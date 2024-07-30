@@ -246,6 +246,17 @@ func generateEnginesWithUrl(enginesRequired int, planID, collectionID, projectID
 	return engines, nil
 }
 
+func error_chk(err error) {
+	if err != nil {
+		// Some schedulers might not have the feature to expose the metrics
+		// We will return directly
+		log.Warn(err)
+		if errors.Is(err, scheduler.FeatureUnavailable) {
+			return
+		}
+	}
+}
+
 func (ctr *Controller) fetchEngineMetrics() {
 	for {
 		time.Sleep(5 * time.Second)
@@ -267,15 +278,7 @@ func (ctr *Controller) fetchEngineMetrics() {
 			collectionID_str := strconv.FormatInt(collectionID, 10)
 			for _, ep := range eps {
 				podsMetrics, err := ctr.Scheduler.GetPodsMetrics(collectionID, ep.PlanID)
-				if err != nil {
-					// Some schedulers might not have the feature to expose the metrics
-					// We will return directly
-					log.Warn(err)
-					if errors.Is(err, scheduler.FeatureUnavailable) {
-						return
-					}
-					continue
-				}
+				error_chk(err)
 				planID_str := strconv.FormatInt(ep.PlanID, 10)
 				for engineNumber, metrics := range podsMetrics {
 					for resourceName, m := range metrics {
@@ -283,6 +286,17 @@ func (ctr *Controller) fetchEngineMetrics() {
 							config.CpuGauge.WithLabelValues(collectionID_str, planID_str, engineNumber).Set(float64(m.MilliValue()))
 						} else {
 							config.MemGauge.WithLabelValues(collectionID_str, planID_str, engineNumber).Set(float64(m.Value()))
+						}
+					}
+				}
+				podsLimit, err := ctr.Scheduler.GetPodLimit(collectionID, ep.PlanID)
+				error_chk(err)
+				for engineNumber, limits := range podsLimit {
+					for resourceName, l := range limits {
+						if resourceName == "cpu" {
+							config.CpuLimitCounter.WithLabelValues(collectionID_str, planID_str, engineNumber).Set(float64(l.MilliValue()))
+						} else {
+							config.MemLimitCounter.WithLabelValues(collectionID_str, planID_str, engineNumber).Set(float64(l.Value()))
 						}
 					}
 				}

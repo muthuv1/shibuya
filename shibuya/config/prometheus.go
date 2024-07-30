@@ -49,9 +49,21 @@ var (
 		Help:      "CPU used by engine",
 	}, []string{"collection_id", "plan_id", "engine_no"})
 
+	CpuLimitCounter = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "shibuya",
+		Name:      "cpu_limit",
+		Help:      "CPU limit of engine",
+	}, []string{"collection_id", "plan_id", "engine_no"})
+
 	MemGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "shibuya",
 		Name:      "mem_gauge",
 		Help:      "Memory used by engine",
+	}, []string{"collection_id", "plan_id", "engine_no"})
+
+	MemLimitCounter = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "shibuya",
+		Name:      "mem_limit",
+		Help:      "Memory limit of engine",
 	}, []string{"collection_id", "plan_id", "engine_no"})
 )
