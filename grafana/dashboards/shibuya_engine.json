@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 3,
-  "iteration": 1573525755008,
+  "iteration": 1709536580256,
   "links": [],
   "panels": [
     {
@@ -52,7 +52,16 @@
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/(.*) Threshold (.*)/",
+          "color": "#bf1b00",
+          "dashes": true,
+          "fill": 0,
+          "lines": true,
+          "linewidth": 3
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
@@ -62,11 +71,28 @@
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
-          "legendFormat": "plan-{{plan_id}} egine-{{engine_no}}",
+          "legendFormat": "plan-{{plan_id}} engine-{{engine_no}}",
           "refId": "A"
+        },
+        {
+          "expr": "shibuya_cpu_limit{collection_id=\"$collectionID\"} / 1000",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "CPU Threshold engine-{{engine_no}}",
+          "refId": "B"
         }
       ],
-      "thresholds": [],
+      "thresholds": [
+        {
+          "colorMode": "critical",
+          "fill": true,
+          "line": true,
+          "op": "gt",
+          "value": null,
+          "yaxis": "left"
+        }
+      ],
       "timeFrom": null,
       "timeShift": null,
       "title": "CPU Usage per engine",
@@ -141,7 +167,16 @@
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/(.*) Threshold (.*)/",
+          "color": "#bf1b00",
+          "dashes": true,
+          "fill": 0,
+          "lines": true,
+          "linewidth": 3
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
@@ -152,6 +187,13 @@
           "intervalFactor": 1,
           "legendFormat": "plan-{{plan_id}} engine-{{engine_no}}",
           "refId": "A"
+        },
+        {
+          "expr": "shibuya_mem_limit{collection_id=\"$collectionID\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "MEM Threshold engine-{{engine_no}}",
+          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -261,5 +303,5 @@
   "timezone": "",
   "title": "Shibuya Engine Health",
   "uid": "9EH6xqTZz",
-  "version": 12
+  "version": 13
 }
