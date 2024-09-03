@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/rakutentech/shibuya/shibuya/config"
 	model "github.com/rakutentech/shibuya/shibuya/model"
+	"github.com/rakutentech/shibuya/shibuya/object_storage"
 	smodel "github.com/rakutentech/shibuya/shibuya/scheduler/model"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
@@ -151,6 +151,54 @@ func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
 func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas int, labels map[string]string, containerConfig *config.ExecutorContainer,
 	affinity *apiv1.Affinity, tolerations []apiv1.Toleration) appsv1.StatefulSet {
 	t := true
+	volumes := []apiv1.Volume{}
+	volumeMounts := []apiv1.VolumeMount{}
+	envvars := []apiv1.EnvVar{}
+	if object_storage.IsProviderGCP() {
+		volumeName := "shibuya-gcp-auth"
+		secretName := config.SC.ObjectStorage.SecretName
+		authFileName := config.SC.ObjectStorage.AuthFileName
+		mountPath := fmt.Sprintf("/auth/%s", authFileName)
+		v := apiv1.Volume{
+			Name: volumeName,
+			VolumeSource: apiv1.VolumeSource{
+				Secret: &apiv1.SecretVolumeSource{
+					SecretName: secretName,
+				},
+			},
+		}
+		volumes = append(volumes, v)
+		vm := apiv1.VolumeMount{
+			Name:      volumeName,
+			MountPath: mountPath,
+			SubPath:   authFileName,
+		}
+		volumeMounts = append(volumeMounts, vm)
+		envvar := apiv1.EnvVar{
+			Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+			Value: mountPath,
+		}
+		envvars = append(envvars, envvar)
+	}
+	cmVolumeName := "shibuya-config"
+	cmName := config.SC.ObjectStorage.ConfigMapName
+	cmVolume := apiv1.Volume{
+		Name: cmVolumeName,
+		VolumeSource: apiv1.VolumeSource{
+			ConfigMap: &apiv1.ConfigMapVolumeSource{
+				LocalObjectReference: apiv1.LocalObjectReference{
+					Name: cmName,
+				},
+			},
+		},
+	}
+	volumes = append(volumes, cmVolume)
+	cmVolumeMounts := apiv1.VolumeMount{
+		Name:      cmVolumeName,
+		MountPath: config.ConfigFilePath,
+		SubPath:   config.ConfigFileName,
+	}
+	volumeMounts = append(volumeMounts, cmVolumeMounts)
 	deployment := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:                       planName,
@@ -179,6 +227,7 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 					},
 					TerminationGracePeriodSeconds: new(int64),
 					HostAliases:                   kcm.makeHostAliases(),
+					Volumes:                       volumes,
 					Containers: []apiv1.Container{
 						{
 							Name:            planName,
@@ -201,6 +250,8 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 									ContainerPort: 8080,
 								},
 							},
+							VolumeMounts: volumeMounts,
+							Env:          envvars,
 						},
 					},
 				},
@@ -632,16 +683,26 @@ func (kcm *K8sClientManager) ServiceReachable(engineUrl string) bool {
 }
 
 func (kcm *K8sClientManager) deleteService(collectionID int64) error {
-	// Delete services by collection is not supported as of yet
-	// Wait for this PR to be merged - https://github.com/kubernetes/kubernetes/pull/85802
-	cmd := exec.Command("kubectl", "-n", kcm.Namespace, "delete", "svc", "--force", "--grace-period=0", "-l", fmt.Sprintf("collection=%d", collectionID))
-	o, err := cmd.Output()
+	// We could not delete services by label
+	// So we firstly get them by label and then delete them one by one
+	// you can check here: https://github.com/kubernetes/kubernetes/issues/68468#issuecomment-419981870
+	corev1Client := kcm.client.CoreV1().Services(kcm.Namespace)
+	resp, err := corev1Client.List(context.TODO(), metav1.ListOptions{
+		LabelSelector: makeCollectionLabel(collectionID),
+	})
 	if err != nil {
-		log.Printf("Cannot delete services for collection %d", collectionID)
 		return err
 	}
-	log.Print(string(o))
-	return nil
+
+	// If there are any errors in deletion, we only return the last one
+	// the errors could be similar so we should avoid return a long list of errors
+	var lastError error
+	for _, svc := range resp.Items {
+		if err := corev1Client.Delete(context.TODO(), svc.Name, metav1.DeleteOptions{}); err != nil {
+			lastError = err
+		}
+	}
+	return lastError
 }
 
 func (kcm *K8sClientManager) deleteDeployment(collectionID int64) error {
@@ -669,10 +730,6 @@ func (kcm *K8sClientManager) PurgeCollection(collectionID int64) error {
 		return err
 	}
 	err = kcm.deleteService(collectionID)
-	if err != nil {
-		return err
-	}
-	err = kcm.deleteIngressRules(collectionID)
 	if err != nil {
 		return err
 	}
@@ -841,15 +898,6 @@ func (kcm *K8sClientManager) CreateIngress(ingressClass, ingressName, serviceNam
 		log.Error(err)
 	}
 	return nil
-}
-
-func (kcm *K8sClientManager) deleteIngressRules(collectionID int64) error {
-	deletePolicy := metav1.DeletePropagationForeground
-	return kcm.client.NetworkingV1().Ingresses(kcm.Namespace).DeleteCollection(context.TODO(), metav1.DeleteOptions{
-		PropagationPolicy: &deletePolicy,
-	}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("collection=%d", collectionID),
-	})
 }
 
 func (kcm *K8sClientManager) GetNodesByCollection(collectionID string) ([]apiv1.Node, error) {
