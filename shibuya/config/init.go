@@ -120,6 +120,11 @@ type IngressConfig struct {
 	//Ingress controllers should be kept longer than then engines
 	Lifespan   string `json:"lifespan"`
 	GCInterval string `json:"gc_period"`
+
+	// LoadBalancerSourceRanges restricts traffic through the load balancer to the specified client IPs
+	// This field applies only when ServiceType is LoadBalancer
+	// https://docs.cloud.google.com/kubernetes-engine/docs/concepts/service-load-balancer-parameters#fw_ip_address
+	LoadBalancerSourceRanges []string `json:"load_balancer_source_ranges"`
 }
 
 var defaultIngressConfig = IngressConfig{

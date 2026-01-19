@@ -370,6 +370,10 @@ func (kcm *K8sClientManager) expose(name string, deployment *appsv1.Deployment) 
 		case "LoadBalancer":
 			service.Spec.ExternalTrafficPolicy = "Local"
 			service.Spec.Type = apiv1.ServiceTypeLoadBalancer
+			// Apply source IP range restrictions if configured
+			if len(config.SC.IngressConfig.LoadBalancerSourceRanges) > 0 {
+				service.Spec.LoadBalancerSourceRanges = config.SC.IngressConfig.LoadBalancerSourceRanges
+			}
 		}
 	}
 	_, err := kcm.client.CoreV1().Services(kcm.Namespace).Create(context.TODO(), service, metav1.CreateOptions{})

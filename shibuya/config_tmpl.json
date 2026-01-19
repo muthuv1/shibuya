@@ -37,7 +37,8 @@
     },
     "ingress": {
         "image": "shibuya:ingress-controller",
-        "cpu": "0.1"
+        "cpu": "0.1",
+        "load_balancer_source_ranges": []
     },
     "dashboard": {
         "url": "http://localhost:3000",
