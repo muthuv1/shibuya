@@ -74,15 +74,8 @@ data:
             "image": {{ .Values.runtime.ingress.image | quote }},
             "cpu": {{ .Values.runtime.ingress.cpu | quote }},
             "replicas": {{ .Values.runtime.ingress.replicas }}
-            {{- $lb_ranges := .Values.runtime.ingress.load_balancer_source_ranges -}}
-            {{- $count := len $lb_ranges -}}
-            {{- if $count }}
-            ,"load_balancer_source_ranges": [
-            {{- range $index, $range := $lb_ranges }}
-                {{- $t := add $index 1 -}}
-                {{ $range | quote }}{{- if lt $t $count }},{{- end }}
-            {{- end }}
-            ]
+            {{- if .Values.runtime.ingress.load_balancer_source_ranges }}
+            ,"load_balancer_source_ranges": {{ .Values.runtime.ingress.load_balancer_source_ranges | toJson }}
             {{- end }}
         },
         "dashboard": {
