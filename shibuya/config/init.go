@@ -122,7 +122,7 @@ type IngressConfig struct {
 	GCInterval string `json:"gc_period"`
 
 	// LoadBalancerSourceRanges restricts traffic through the load balancer to the specified client IPs
-	// This field applies only when ServiceType is LoadBalancer
+	// This field applies only when ServiceType is LoadBalancer which is only GKE
 	// https://docs.cloud.google.com/kubernetes-engine/docs/concepts/service-load-balancer-parameters#fw_ip_address
 	LoadBalancerSourceRanges []string `json:"load_balancer_source_ranges"`
 }
