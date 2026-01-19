@@ -86,6 +86,7 @@ runtime:
     image: "shibuya:ingress-controller"
     cpu: 0.1
     replicas: 1
+    load_balancer_source_ranges: []
   dashboard:
     url: "http://localhost:3000"
     run_dashboard: "/d/RXY8nM1mk2/shibuya"
